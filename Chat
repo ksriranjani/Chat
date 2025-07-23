@@ -1,23 +1,37 @@
- import requests
-import json
-import os
+ import google.generativeai as genai  # version 0.8.5 only
+
+# Configure Gemini API
+genai.configure(api_key="YOUR_API_KEY")  # replace with your actual key
+
+# Load available model (limited in 0.8.5)
+model = genai.GenerativeModel('models/text-bison-001')
 
 def get_llm_response(question):
-    api_key = os.getenv("GEMINI_API_KEY") or "YOUR_API_KEY"
-    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + api_key
-
-    payload = {
-        "contents": [{
-            "parts": [{"text": f"Answer this user query briefly and clearly: {question}"}]
-        }]
-    }
-
-    headers = {"Content-Type": "application/json"}
-
     try:
-        response = requests.post(url, headers=headers, data=json.dumps(payload))
-        result = response.json()
-        return result['candidates'][0]['content']['parts'][0]['text']
+        prompt = f"Answer this user query briefly and clearly: {question}"
+        response = model.generate_text(prompt)
+        return response.result.strip() if hasattr(response, 'result') else "Sorry, no answer generated."
     except Exception as e:
-        print("Gemini API Error:", e)
-        return "Sorry, I couldn't fetch an answer right now."
+        print("Gemini Error:", str(e))
+        return "Sorry, Icouldn't get an answer right now."
+
+
+
+from django.urls import path  # type: ignore
+from .views import get_answer  # Your view that handles chatbot interaction
+
+urlpatterns = [
+    path('ask/', get_answer, name='ask-question'),  # Endpoint: /api/ask/
+]
+
+
+
+from django.contrib import admin  # type: ignore
+from django.urls import path, include  # type: ignore
+from django.http import HttpResponseRedirect  # type: ignore
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('chatbot.urls')),  # API routes for chatbot
+    path('', lambda request: HttpResponseRedirect('/api/ask/')),  # Redirect root to chatbot
+]
