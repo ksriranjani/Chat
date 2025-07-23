@@ -1,0 +1,74 @@
+ pip install sentence-transformers
+ import pandas as pd
+import joblib
+from sentence_transformers import SentenceTransformer
+from sklearn.preprocessing import LabelEncoder
+import numpy as np
+import os
+
+# Load and clean data
+faq_df = pd.read_csv('faq_dataset.csv')
+faq_df.dropna(subset=['question', 'answer'], inplace=True)
+faq_df['question'] = faq_df['question'].str.strip().str.lower()
+faq_df['answer'] = faq_df['answer'].str.strip()
+
+# Encode answers
+le = LabelEncoder()
+faq_df['encoded_answer'] = le.fit_transform(faq_df['answer'])
+
+# Load sentence transformer
+model = SentenceTransformer('all-MiniLM-L6-v2')  # Fast & accurate
+
+# Encode all questions into dense vectors
+question_embeddings = model.encode(faq_df['question'].tolist(), show_progress_bar=True)
+
+# Save all
+os.makedirs("chatbot", exist_ok=True)
+joblib.dump(question_embeddings, 'chatbot/faq_embeddings.pkl')
+joblib.dump(model, 'chatbot/faq_sentence_model.pkl')
+joblib.dump(le, 'chatbot/label_encoder.pkl')
+faq_df.to_csv("chatbot/faq_cleaned.csv", index=False)
+
+
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+import joblib
+import pandas as pd
+import numpy as np
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+from .llm_prompt import get_llm_response
+
+# Load models and data
+faq_df = pd.read_csv('chatbot/faq_cleaned.csv')
+faq_embeddings = joblib.load('chatbot/faq_embeddings.pkl')
+sentence_model = SentenceTransformer('all-MiniLM-L6-v2')  # or load if saved
+label_encoder = joblib.load('chatbot/label_encoder.pkl')
+
+class AskQuestionView(APIView):
+    def post(self, request):
+        question = request.data.get("question", "").strip().lower()
+        if not question:
+            return Response({"answer": "Please enter a valid question."})
+
+        try:
+            # Vectorize input question using sentence embedding
+            user_vec = sentence_model.encode([question])
+
+            # Compute cosine similarity with FAQ vectors
+            similarities = cosine_similarity(user_vec, faq_embeddings).flatten()
+            top_index = np.argmax(similarities)
+            top_score = similarities[top_index]
+
+            if top_score >= 0.60:  # Semantic match threshold
+                best_answer = faq_df.iloc[top_index]['answer']
+                return Response({"answer": best_answer})
+            else:
+                fallback_answer = get_llm_response(question)
+                return Response({"answer": fallback_answer})
+
+        except Exception as e:
+            print("Error:", e)
+            return Response({"answer": "Something went wrong while processing your question."})
