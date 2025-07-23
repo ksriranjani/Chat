@@ -1,37 +1,32 @@
- import google.generativeai as genai  # version 0.8.5 only
+ import google.generativeai as genai  # Ensure version is 0.8.5
 
-# Configure Gemini API
-genai.configure(api_key="YOUR_API_KEY")  # replace with your actual key
+# Configure the API key
+genai.configure(api_key="YOUR_API_KEY")  # Replace with your real API key
 
-# Load available model (limited in 0.8.5)
+# Load the correct model (supported in v0.8.5)
 model = genai.GenerativeModel('models/text-bison-001')
 
+# Function to get response from Gemini (text-bison)
 def get_llm_response(question):
     try:
-        prompt = f"Answer this user query briefly and clearly: {question}"
-        response = model.generate_text(prompt)
-        return response.result.strip() if hasattr(response, 'result') else "Sorry, no answer generated."
+        prompt = f"Answer this user query briefly and clearly:\n{question}"
+        response = model.generate_text(prompt=prompt)
+        
+        # Check if result exists
+        if hasattr(response, 'result') and response.result:
+            return response.result.strip()
+        else:
+            return "Sorry, no answer generated."
     except Exception as e:
         print("Gemini Error:", str(e))
-        return "Sorry, Icouldn't get an answer right now."
+        return "Sorry, I couldn't get an answer right now."
+
+# Example usage
+if __name__ == "__main__":
+    user_input = "What is the capital of France?"
+    print(get_llm_response(user_input))
 
 
 
-from django.urls import path  # type: ignore
-from .views import get_answer  # Your view that handles chatbot interaction
 
-urlpatterns = [
-    path('ask/', get_answer, name='ask-question'),  # Endpoint: /api/ask/
-]
-
-
-
-from django.contrib import admin  # type: ignore
-from django.urls import path, include  # type: ignore
-from django.http import HttpResponseRedirect  # type: ignore
-
-urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/', include('chatbot.urls')),  # API routes for chatbot
-    path('', lambda request: HttpResponseRedirect('/api/ask/')),  # Redirect root to chatbot
-]
+pip install google-generativeai==0.8.5
