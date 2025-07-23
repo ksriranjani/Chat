@@ -1,25 +1,25 @@
- from google import generativeai as genai
-from google.generativeai import types
+ import google.generativeai as genai  # version 0.8.5 only
 
-# Configure your Gemini API key
-genai.configure(api_key="YOUR_API_KEY")
+# Configure Gemini API
+genai.configure(api_key="YOUR_API_KEY")  # replace with your actual key
 
-# Create model object for Gemini 1.5
-model = genai.GenerativeModel('gemini-1.5-flash')  # or 'gemini-1.5-pro'
+# Load available model (text-bison only works in v0.8.5)
+model = genai.GenerativeModel('models/text-bison-001')
 
 def get_llm_response(question):
     try:
-        response = model.generate_content(
-            contents=[{"role": "user", "parts": [question]}],
-            generation_config=types.GenerationConfig(temperature=0.7)
-        )
-        return response.text.strip() if response and hasattr(response, 'text') else "No response generated."
-    
-    except Exception as e:
-        print("Fallback: Gemini error ->", str(e))
-        return "Sorry, I couldn't fetch a response right now."
+        prompt = f"Answer this user query briefly and clearly: {question}"
+        response = model.generate_text(prompt=prompt)
 
-# Example usage
-if __name__ == "__main__":
-    query = "Explain how AI works in simple terms."
-    print(get_llm_response(query))
+        # Safely handle the response
+        if hasattr(response, 'result') and response.result:
+            return response.result.strip()
+        else:
+            return "Sorry, no answer generated."
+
+    except Exception as e:
+        # Optional: log exact error for debugging
+        print("Gemini Error:", str(e))
+
+        # Optional fallback logic (e.g., return default string or retry)
+        return "Sorry, I couldn't get an answer right now."
