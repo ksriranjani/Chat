@@ -1,25 +1,13 @@
- import google.generativeai as genai  # version 0.8.5 only
+ import google.generativeai as genai
 
-# Configure Gemini API
-genai.configure(api_key="YOUR_API_KEY")  # replace with your actual key
+genai.configure(api_key="YOUR_API_KEY")
 
-# Load available model (text-bison only works in v0.8.5)
 model = genai.GenerativeModel('models/text-bison-001')
 
-def get_llm_response(question):
-    try:
-        prompt = f"Answer this user query briefly and clearly: {question}"
-        response = model.generate_text(prompt=prompt)
-
-        # Safely handle the response
-        if hasattr(response, 'result') and response.result:
-            return response.result.strip()
-        else:
-            return "Sorry, no answer generated."
-
-    except Exception as e:
-        # Optional: log exact error for debugging
-        print("Gemini Error:", str(e))
-
-        # Optional fallback logic (e.g., return default string or retry)
-        return "Sorry, I couldn't get an answer right now."
+try:
+    response = model.generate_text(prompt="Say hello!")
+    print("RESPONSE:", response.result)
+except Exception as e:
+    import traceback
+    print("Gemini Error:", str(e))
+    traceback.print_exc()
